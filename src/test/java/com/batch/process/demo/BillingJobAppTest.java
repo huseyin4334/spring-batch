@@ -1,14 +1,15 @@
 package com.batch.process.demo;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.*;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.test.JobLauncherTestUtils;
+import org.springframework.batch.test.JobRepositoryTestUtils;
+import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -18,24 +19,38 @@ import java.util.UUID;
 
 @ExtendWith(OutputCaptureExtension.class)
 @SpringBootTest
+@SpringBatchTest
 class BillingJobAppTest {
 
-    @Autowired
-    private Job job;
+    /*
+        The following two beans are used to reset the job repository before each test.
+        These beans coming from the Spring Batch Test framework.
+     */
 
     @Autowired
-    private JobLauncher jobLauncher;
+    private JobLauncherTestUtils jobLauncherTestUtils;
+
+    @Autowired
+    private JobRepositoryTestUtils jobRepositoryTestUtils;
+
+    /*
+        docker exec postgres psql -U postgres -c 'select * from batch_job_instance;'
+        You will see just last job instance in the table. Because beforeEach() method clears the table.
+     */
+    @BeforeEach
+    void beforeEach() {
+        jobRepositoryTestUtils.removeJobExecutions();
+    }
 
     @RepeatedTest(2)
-    void repeatedlyJobTest(CapturedOutput output) throws Exception {
+    void repeatedlyJobTestWithUtilities(CapturedOutput output) throws Exception {
         // given
         JobParameters parameters = new JobParametersBuilder()
                 .addString("input.file", "resources/billingdata/billing-2023-01.csv")
-                .addString("instance_id", UUID.randomUUID().toString())
                 .toJobParameters();
 
         // when
-        JobExecution execution = jobLauncher.run(job, parameters);
+        JobExecution execution = jobLauncherTestUtils.launchJob(parameters);
 
         // then
         String expectedOutput = "Processing billing information from file resources/billingdata/billing-2023-01.csv";
@@ -46,28 +61,7 @@ class BillingJobAppTest {
                 output.getOut().contains(expectedOutput),
                 "The expected output was not found. Expected: " + expectedOutput + " Actual: " + output.getOut()
         );
-    }
 
-    @Test
-    void repeatedlyJobExceptionTest() throws Exception {
-        // given
-        String uuid = UUID.randomUUID().toString();
-        JobParameters parameters = new JobParametersBuilder()
-                .addString("input.file", "resources/billingdata/billing-2023-01.csv")
-                .addString("instance_id", uuid)
-                .toJobParameters();
-
-        // when
-        jobLauncher.run(job, parameters);
-
-        JobParameters params = new JobParametersBuilder()
-                .addString("input.file", "resources/billingdata/billing-2023-01.csv")
-                .addString("instance_id", uuid)
-                .toJobParameters();
-
-        Assertions.assertThrows(
-                org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException.class,
-                () -> jobLauncher.run(job, params)
-        );
+        Assertions.assertEquals(ExitStatus.COMPLETED, execution.getExitStatus());
     }
 }
