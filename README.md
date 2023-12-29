@@ -26,31 +26,12 @@
   - Job is a sequence of steps.
   - Job is an interface.
   - We can create a job by implementing the interface.
-- Step
-  - Step is an interface.
-  - Step is a sequence of tasks or a sequence of chunks.
-  - We can create a step by implementing the interface.
-- Tasklet
-  - Tasklet is a single task.
-  - We can create a tasklet by implementing the interface.
-  - Tasklet is used to perform a single task.
-- Chunk
-  - Chunk is a part of a step.
-  - Chunk is a sequence of items.
-  - Items are read, processed and written. This means that a chunk is a sequence of read, process and write operations.
-  - Chunk is a part of a step.
-  - ItemReader, ItemProcessor and ItemWriter are used to read, process and write items respectively.
-- ItemReader
-  - ItemReader is used to read items from a file or a database.
-- ItemWriter
-  - ItemWriter is used to write items to a file or a database.
-- ItemProcessor
-  - ItemProcessor is used to process items.
-  - ItemProcessor is optional in a chunk.
-  - ItemProcessor is used to process items before writing them to a file or a database.
-- JobLauncher
-  - JobLauncher is used to launch a job.
-- JobRepository
-  - JobRepository is an interface.
-  - JobRepository is used to store the state of a job.
-  - We should jobRepository because of restartability.
+- JobInstance
+  - JobInstance is an instance of a job.
+  - JobInstance is identified by a job name and a job key.
+  - We are distinguish same job instances by job parameters.
+  - Job key is equal to job parameters hash code.
+  - If job parameters hash code is same, then jobLauncher throws an exception.
+    - org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException: A job instance already exists and is complete for parameters={}.
+  - If job parameters hash code is different, then jobLauncher executes a new job instance.
+  - We are using jobInstance to restart a job if it fails.
