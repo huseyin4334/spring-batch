@@ -11,6 +11,8 @@ import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.jdbc.JdbcTestUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -30,6 +32,9 @@ class BillingJobAppTest {
     @Autowired
     private JobRepositoryTestUtils jobRepositoryTestUtils;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     /*
         docker exec postgres psql -U postgres -c 'select * from batch_job_instance;'
         You will see just last job instance in the table. Because beforeEach() method clears the table.
@@ -37,10 +42,11 @@ class BillingJobAppTest {
     @BeforeEach
     void beforeEach() {
         jobRepositoryTestUtils.removeJobExecutions();
+        JdbcTestUtils.deleteFromTables(this.jdbcTemplate, "BILLING_DATA");
     }
 
     @Test
-    void repeatedlyJobTestWithUtilities() throws Exception {
+    void copyFileStage() throws Exception {
         // given
         JobParameters parameters = new JobParametersBuilder()
                 .addString("input.file",
@@ -56,5 +62,23 @@ class BillingJobAppTest {
         Assertions.assertTrue(Files.exists(Paths.get("staging", "billing-2023-01.csv")));
 
         Assertions.assertEquals(ExitStatus.COMPLETED, execution.getExitStatus());
+    }
+
+    @Test
+    void readAndWrite() throws Exception {
+        // given
+        JobParameters parameters = new JobParametersBuilder()
+                .addString("input.file",
+                        "billingdata/billing-2023-01.csv")
+                .toJobParameters();
+
+        // when
+        JobExecution execution = jobLauncherTestUtils.launchJob(parameters);
+
+        System.out.println(execution.getJobId());
+
+        // then
+        Assertions.assertEquals(ExitStatus.COMPLETED, execution.getExitStatus());
+        Assertions.assertEquals(1000, JdbcTestUtils.countRowsInTable(jdbcTemplate, "BILLING_DATA"));
     }
 }

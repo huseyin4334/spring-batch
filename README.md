@@ -22,46 +22,14 @@
 
 
 ## Spring Batch Concepts
-- Job
-  - Job is a sequence of steps.
-  - Job is an interface.
-  - We can create a job by implementing the interface.
-  - Job Interface
-  - SimpleJob
-  - FlowJob
-  - We can use JobBuilder to create a job.
-- JobInstance
-  - JobInstance is an instance of a job.
-  - JobInstance is identified by a job name and a job key.
-  - We are distinguish same job instances by job parameters.
-  - Job key is equal to job parameters hash code.
-  - If job parameters hash code is same, then jobLauncher throws an exception.
-    - org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException: A job instance already exists and is complete for parameters={}.
-  - If job parameters hash code is different, then jobLauncher executes a new job instance.
-  - We are using jobInstance to restart a job if it fails.
-- Step
-  - Step Execution is an instance of a step.
-    - It is identified by a step name and a job execution id.
-  - Step is an instance for jobs.
-  - Step types:
-    - Normal Step Interface
-      - We can create a step by implementing the interface.
-      - We can use normal step interface to create a simple step.
-    - TaskletStep
-      - Designed for simple tasks (like copying a file or creating an archive), or item-oriented tasks (like reading a file or a database table).
-      - Designed for work single thread.
-      - For example, we can use tasklet step to copy a file.
-      - Chunk Oriented Tasklet
-      - System Command Tasklet
-    - PartitionStep
-      - Designed to process the input data set in partitions.
-      - Each partition is processed in a separate thread.
-      - For example, we can use partition step to process a large file.
-    - JobStep
-      - Similar to a FlowStep but actually creates and launches a separate job execution for the steps in the specified flow. This is useful for creating a complex flow of jobs and sub-jobs.
-    - FlowStep
-      - Useful for logically grouping steps into flows.
-      - For example, we can use flow step to group steps.
-      - We can use flow step to create a conditional flow.
-  - We can use step builder to create a step.
-  - Or We can implement Step interface to create a step.
+Ingesting a file into a database table seems like a simple and easy task at first glance, but this simple task is actually quite challenging! 
+What if the input file is big enough that it doesn't fit in memory? What if the process that ingests the file is terminated abruptly half way through? 
+How do we deal with these situations in an efficient and fault-tolerant way?
+
+Spring Batch comes with a processing model that is designed and implemented to address those challenges. It is called the chunk-oriented processing model. 
+The idea of this model is to process the datasource in chunks of a configurable size.
+
+A chunk is a collection of "items" from the datasource. An item can be a line in a flat file, a record in a database table, etc.
+
+Each chunk of items is read and written within the scope of a transaction. This way, chunks are either committed together or rolled back together, 
+meaning they either all succeed or fail together. You can think of this as an "all-or-nothing" approach, but only for the specific chunk that's being processed.
