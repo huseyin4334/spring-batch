@@ -6,18 +6,15 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.batch.core.*;
-import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 
-import java.util.UUID;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
-@ExtendWith(OutputCaptureExtension.class)
 @SpringBootTest
 @SpringBatchTest
 class BillingJobAppTest {
@@ -42,25 +39,21 @@ class BillingJobAppTest {
         jobRepositoryTestUtils.removeJobExecutions();
     }
 
-    @RepeatedTest(2)
-    void repeatedlyJobTestWithUtilities(CapturedOutput output) throws Exception {
+    @Test
+    void repeatedlyJobTestWithUtilities() throws Exception {
         // given
         JobParameters parameters = new JobParametersBuilder()
-                .addString("input.file", "resources/billingdata/billing-2023-01.csv")
+                .addString("input.file",
+                        "billingdata/billing-2023-01.csv")
                 .toJobParameters();
 
         // when
         JobExecution execution = jobLauncherTestUtils.launchJob(parameters);
 
-        // then
-        String expectedOutput = "Processing billing information from file resources/billingdata/billing-2023-01.csv";
-
         System.out.println(execution.getJobId());
 
-        Assertions.assertTrue(
-                output.getOut().contains(expectedOutput),
-                "The expected output was not found. Expected: " + expectedOutput + " Actual: " + output.getOut()
-        );
+        // then
+        Assertions.assertTrue(Files.exists(Paths.get("staging", "billing-2023-01.csv")));
 
         Assertions.assertEquals(ExitStatus.COMPLETED, execution.getExitStatus());
     }
